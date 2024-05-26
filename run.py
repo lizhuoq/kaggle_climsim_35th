@@ -39,15 +39,13 @@ if __name__ == '__main__':
     parser.add_argument('--freq', type=str, default='h',
                         help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
-
-    parser.add_argument('--feature_scaler_path', type=str, required=True)
-    parser.add_argument('--target_scaler_path', type=str, required=True)
-    parser.add_argument('--weight_path', type=str, required=True)  
+ 
     parser.add_argument('--test_path', type=str)
     parser.add_argument('--feature_importance_path', type=str)
     parser.add_argument('--fi_threshold', type=int)
     parser.add_argument('--simplify_features', action='store_true', default=False)
     parser.add_argument('--simplify_targets', action='store_true', default=False)
+    parser.add_argument('--sample_rate', type=float, default=None)
 
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -107,6 +105,7 @@ if __name__ == '__main__':
     parser.add_argument('--scalar_in_channel', type=int, default=16)
     parser.add_argument('--scalar_out_channel', type=int, default=8)
     parser.add_argument('--nhead', type=int)
+    parser.add_argument('--bidirectional', default=False, action="store_true")
     
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')

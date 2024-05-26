@@ -1,11 +1,9 @@
-from data_provider.data_loader import ClimSim1D, ClimSimTabular, ClimSimSmall
+from data_provider.data_loader import ClimSimSeq2Seq
 # from data_provider.uea import collate_fn
 from torch.utils.data import DataLoader
 
 data_dict = {
-    'ClimSimTabular': ClimSimTabular, 
-    'ClimSim1D': ClimSim1D, 
-    'ClimSimSmall': ClimSimSmall
+    'ClimSim1D': ClimSimSeq2Seq
 }
 
 

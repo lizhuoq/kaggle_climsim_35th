@@ -43,25 +43,28 @@ class Exp_1D(Exp_Basic):
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
-        cal_grad_index = np.nonzero(vali_data.weight[0] != 0)[0].tolist()
+        cal_grad_targets = np.nonzero(vali_data.weight[0] != 0)[0].tolist()
         total_loss = []
         self.model.eval()
         with torch.no_grad():
-            for i, (seq_x, x, seq_y, y) in enumerate(vali_loader):
-                seq_x = seq_x.float().to(self.device)
-                x = x.float().to(self.device)
-                seq_y = seq_y.float().to(self.device)
-                y = y.float().to(self.device)
+            for i, (batch_x, batch_y) in enumerate(vali_loader):
+                batch_x = batch_x.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
 
-                seq_o, o = self.model(seq_x, x)
+                batch_x_0 = batch_x[:, :9 * 60].reshape(-1, 9, 60).transpose(1, 2) # B, L, C
+                batch_x_1 = batch_x[:, 9 * 60:].unsqueeze(1).repeat(1, 60, 1)
+                batch_x = torch.concat([batch_x_0, batch_x_1], dim=2)
                 
-                outputs = torch.cat([seq_o.reshape(seq_o.shape[0], -1), o], dim=1)
-                batch_y = torch.cat([seq_y.reshape(seq_y.shape[0], -1), y], dim=1)
+                outputs = self.model(batch_x)
+
+                outputs_0 = outputs[:, :, :6].transpose(1, 2).reshape(-1, 6 * 60)
+                outputs_1 = outputs[:, :, 6:].mean(dim=1)
+                outputs = torch.concat([outputs_0, outputs_1], dim=1)
 
                 pred = outputs.detach().cpu()
                 true = batch_y.detach().cpu()
 
-                loss = criterion(pred[:, cal_grad_index], true[:, cal_grad_index])
+                loss = criterion(pred[:, cal_grad_targets], true[:, cal_grad_targets])
 
                 total_loss.append(loss)
         total_loss = np.average(total_loss)
@@ -71,7 +74,7 @@ class Exp_1D(Exp_Basic):
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
-        cal_grad_index = np.nonzero(vali_data.weight[0] != 0)[0].tolist()
+        cal_grad_targets = np.nonzero(vali_data.weight[0] != 0)[0].tolist()
 
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
@@ -91,19 +94,23 @@ class Exp_1D(Exp_Basic):
 
             self.model.train()
             epoch_time = time.time()
-            for i, (seq_x, x, seq_y, y) in enumerate(train_loader):
+            for i, (batch_x, batch_y) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
-                seq_x = seq_x.float().to(self.device)
-                x = x.float().to(self.device)
-                seq_y = seq_y.float().to(self.device)
-                y = y.float().to(self.device)
+                batch_x = batch_x.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
 
-                seq_o, o = self.model(seq_x, x)
+                batch_x_0 = batch_x[:, :9 * 60].reshape(-1, 9, 60).transpose(1, 2) # B, L, C
+                batch_x_1 = batch_x[:, 9 * 60:].unsqueeze(1).repeat(1, 60, 1)
+                batch_x = torch.concat([batch_x_0, batch_x_1], dim=2)
+                
+                outputs = self.model(batch_x)
 
-                outputs = torch.cat([seq_o.reshape(seq_o.shape[0], -1), o], dim=1)
-                batch_y = torch.cat([seq_y.reshape(seq_y.shape[0], -1), y], dim=1)
-                loss = criterion(outputs[:, cal_grad_index], batch_y[:, cal_grad_index])
+                outputs_0 = outputs[:, :, :6].transpose(1, 2).reshape(-1, 6 * 60)
+                outputs_1 = outputs[:, :, 6:].mean(dim=1)
+                outputs = torch.concat([outputs_0, outputs_1], dim=1)
+
+                loss = criterion(outputs[:, cal_grad_targets], batch_y[:, cal_grad_targets])
                 train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
@@ -146,16 +153,20 @@ class Exp_1D(Exp_Basic):
 
         self.model.eval()
         with torch.no_grad():
-            for i, (seq_x, x, seq_y, y) in enumerate(test_loader):
-                seq_x = seq_x.float().to(self.device)
-                x = x.float().to(self.device)
-                seq_y = seq_y.float().to(self.device)
-                y = y.float().to(self.device)
+            for i, (batch_x, batch_y) in enumerate(test_loader):
+                batch_x = batch_x.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
 
-                seq_o, o = self.model(seq_x, x)
+                batch_x_0 = batch_x[:, :9 * 60].reshape(-1, 9, 60).transpose(1, 2) # B, L, C
+                batch_x_1 = batch_x[:, 9 * 60:].unsqueeze(1).repeat(1, 60, 1)
+                batch_x = torch.concat([batch_x_0, batch_x_1], dim=2)
+                
+                outputs = self.model(batch_x)
 
-                outputs = torch.cat([seq_o.reshape(seq_o.shape[0], -1), o], dim=1)
-                batch_y = torch.cat([seq_y.reshape(seq_y.shape[0], -1), y], dim=1)
+                outputs_0 = outputs[:, :, :6].transpose(1, 2).reshape(-1, 6 * 60)
+                outputs_1 = outputs[:, :, 6:].mean(dim=1)
+                outputs = torch.concat([outputs_0, outputs_1], dim=1)
+
                 outputs = outputs.detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
                 if self.args.inverse:
@@ -180,18 +191,77 @@ class Exp_1D(Exp_Basic):
         # mae, mse, rmse, mape, mspe = metric(preds, trues)
         r2 = r2_score(trues, preds, multioutput="raw_values")
         print('r2:{}'.format(r2.mean()))
-        f = open("result_1d.txt", 'a')
+        print('adjust r2:{}'.format(np.where(r2 < 0, 0, r2).mean()))
+        f = open("result_seq2seq.txt", 'a')
         f.write(setting + "  \n")
-        f.write('r2:{}'.format(r2.mean()))
+        f.write('r2:{}'.format(np.where(r2 < 0, 0, r2).mean()))
         f.write('\n')
         f.write('\n')
         f.close()
 
         np.save(folder_path + 'metrics.npy', r2)
         if self.args.save_results:
-            preds = pl.DataFrame(preds, schema=test_data.targets, orient="row")
-            trues = pl.DataFrame(trues, schema=test_data.targets, orient="row")
-            preds.write_parquet(folder_path + 'pred.parquet')
-            trues.write_parquet(folder_path + 'true.parquet')
+            np.save(folder_path + 'pred.npy', preds)
+            np.save(folder_path + 'true.npy', trues)
         
         return
+
+    def submit(self, setting, test=0):
+        import polars as pl
+        from sklearn.preprocessing import StandardScaler
+        from joblib import load
+        df_test = pl.read_parquet("/data/home/scv7343/run/climsim_new/dataset/ClimSim/test.parquet")
+        if test:
+            print('loading model')
+            self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
+
+        feature_scaler: StandardScaler = load("/data/home/scv7343/run/climsim_new/dataset/ClimSim/feature_scaler.joblib")
+        target_scaler: StandardScaler = load("/data/home/scv7343/run/climsim_new/dataset/ClimSim/target_scaler.joblib")
+        feature_name = feature_scaler.feature_names_in_.tolist()
+        target_name = target_scaler.feature_names_in_.tolist()
+
+        df_weight = pl.read_parquet("/data/home/scv7343/run/climsim_new/dataset/ClimSim/sample_submission.parquet")
+        weight = df_weight[target_name].to_numpy()
+
+        if self.args.postprocess:
+            r2 = np.load('./results/' + setting + '/' + 'metrics.npy')
+            print('r2:{}'.format(r2.mean()))
+            print('adjust r2:{}'.format(np.where(r2 < 0, 0, r2).mean()))
+            unpredict_target_index = np.nonzero(r2 < 0)[0]
+            print("unpredict target: ", [target_name[x] for x in unpredict_target_index])
+
+        preds = []
+        self.model.eval()
+        with torch.no_grad():
+            for chunk in df_test.iter_slices(self.args.batch_size):
+                data_x = chunk[feature_name].to_numpy()
+                batch_x = torch.tensor(data_x).float().to(self.device)
+
+                batch_x_0 = batch_x[:, :9 * 60].reshape(-1, 9, 60).transpose(1, 2) # B, L, C
+                batch_x_1 = batch_x[:, 9 * 60:].unsqueeze(1).repeat(1, 60, 1)
+                batch_x = torch.concat([batch_x_0, batch_x_1], dim=2)
+
+                outputs = self.model(batch_x)
+
+                outputs_0 = outputs[:, :, :6].transpose(1, 2).reshape(-1, 6 * 60)
+                outputs_1 = outputs[:, :, 6:].mean(dim=1)
+                outputs = torch.concat([outputs_0, outputs_1], dim=1)
+                
+                pred = outputs.detach().cpu().numpy()
+
+                if self.args.postprocess:
+                    pred[:, unpredict_target_index] = 0
+
+                if self.args.inverse:
+                    pred = target_scaler.inverse_transform(pred.astype(np.float64)) * weight
+                    pred = pl.DataFrame(pred, schema=target_name, orient="row")
+
+                preds.append(pl.concat([chunk[["sample_id"]], pred], how="horizontal"))
+
+        preds = pl.concat(preds, how="vertical")
+
+        folder_path = './output/' + setting + '/'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        preds[df_weight.columns].write_parquet(folder_path + "submission.parquet")
