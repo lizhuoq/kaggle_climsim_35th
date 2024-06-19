@@ -46,6 +46,12 @@ class Model(nn.Module):
         self.projection = nn.Linear(configs.d_model, configs.out_channel)
 
     def forward(self, x):
+        """
+        Input:
+            x shape: batch_size, in_channel
+        Return:
+            shape: batch_size, out_channel
+        """
         enc_in = self.dropout(self.embedding(x))
         enc_out = self.blks(enc_in)
         return self.projection(enc_out)

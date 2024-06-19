@@ -7,28 +7,28 @@ source activate climsim
 model_name=MLP
 
 python -u run.py \
-  --task_name small \
+  --task_name tabular \
   --is_training 1 \
-  --root_path ./dataset/ClimSimSmall \
-  --feature_scaler_path ./dataset/ClimSimSmall/features.joblib \
-  --target_scaler_path ./dataset/ClimSimSmall/targets.joblib \
-  --weight_path ./dataset/ClimSim/sample_submission.parquet \
-  --model_id small \
+  --root_path ./dataset/ClimSim \
+  --model_id tabular \
   --model $model_name \
-  --data ClimSimSmall \
-  --in_channel 462 \
-  --out_channel 305 \
-  --dropout 0.3 \
+  --data ClimSim1D \
+  --in_channel 556 \
+  --out_channel 368 \
+  --dropout 0.2 \
   --n_layers 6 \
   --d_model 1024 \
-  --d_ff 4096 \
+  --d_ff 2048 \
   --des 'Exp' \
   --itr 1 \
-  --train_epochs 30 \
-  --batch_size 20000 \
+  --train_epochs 10 \
+  --batch_size 16000 \
   --patience 3 \
-  --learning_rate 0.0006 \
-  --lradj cosine \
+  --learning_rate 0.001 \
+  --lradj fix \
   --inverse \
-  --test_path ./dataset/ClimSim/test.parquet \
+  --bidirectional \
+  --use_multi_gpu \
+  --devices 0,1 \
+  --sample_rate 0.31 \
   --postprocess

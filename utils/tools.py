@@ -5,6 +5,7 @@ import torch
 # import matplotlib.pyplot as plt
 # import pandas as pd
 import math
+import polars as pl
 
 # plt.switch_backend('agg')
 
@@ -39,11 +40,14 @@ class EarlyStopping:
         self.val_loss_min = np.Inf
         self.delta = delta
 
-    def __call__(self, val_loss, model, path):
+    def __call__(self, val_loss, model, path, init_save=True):
         score = -val_loss
         if self.best_score is None:
             self.best_score = score
-            self.save_checkpoint(val_loss, model, path)
+            if init_save:
+                self.save_checkpoint(val_loss, model, path)
+            else:
+                print("init")
         elif score < self.best_score + self.delta:
             self.counter += 1
             print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
@@ -118,3 +122,15 @@ def adjustment(gt, pred):
 
 def cal_accuracy(y_pred, y_true):
     return np.mean(y_pred == y_true)
+
+
+def load_partial_state_dict(model, state_dict):
+    own_state = model.state_dict()
+    for name, param in state_dict.items():
+        if name in own_state:
+            if own_state[name].size() == param.size():
+                own_state[name].copy_(param)
+            else:
+                print(f"Size mismatch for {name}: {param.size()} vs {own_state[name].size()}")
+        else:
+            print(f"Parameter {name} not found in the model.")

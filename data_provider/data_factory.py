@@ -1,9 +1,10 @@
-from data_provider.data_loader import ClimSimSeq2Seq
+from data_provider.data_loader import ClimSimSeq2Seq, ClimSim2D
 # from data_provider.uea import collate_fn
 from torch.utils.data import DataLoader
 
 data_dict = {
-    'ClimSim1D': ClimSimSeq2Seq
+    'ClimSim1D': ClimSimSeq2Seq, 
+    'ClimSim2D': ClimSim2D
 }
 
 
@@ -24,6 +25,23 @@ def data_provider(args, flag):
     data_loader = DataLoader(
         data_set,
         batch_size=batch_size,
+        shuffle=shuffle_flag,
+        num_workers=args.num_workers,
+        drop_last=drop_last)
+    return data_set, data_loader
+
+
+def data_provider_2D(args, flag):
+    Data = ClimSim2D
+    drop_last = False
+    shuffle_flag = False if flag == "test" else True
+    data_set = Data(
+        args, flag=flag
+    )
+    print(flag, len(data_set))
+    data_loader = DataLoader(
+        data_set,
+        batch_size=args.batch_size,
         shuffle=shuffle_flag,
         num_workers=args.num_workers,
         drop_last=drop_last)

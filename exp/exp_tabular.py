@@ -15,7 +15,6 @@ from sklearn.metrics import r2_score
 import polars as pl
 from joblib import load
 from sklearn.preprocessing import StandardScaler
-import pandas as pd
 
 warnings.filterwarnings('ignore')
 
@@ -43,10 +42,16 @@ class Exp_Tabular(Exp_Basic):
         criterion = nn.MSELoss()
         return criterion
 
-    def vali(self, vali_data, vali_loader, criterion):
-        if not self.args.simplify_targets:   
-            cal_grad_index = np.nonzero(vali_data.weight[0] != 0)[0].tolist()
+    def vali(self, vali_data, vali_loader, criterion, r2=True):
+        cal_grad_targets = np.nonzero(vali_data.weight[0] != 0)[0].tolist()
+        no_grad_targets = vali_data.get_no_grad_targets()
+        cal_grad_targets = [x for x in cal_grad_targets if x not in no_grad_targets]
         total_loss = []
+        
+        if r2:
+            preds = []
+            trues = []
+
         self.model.eval()
         with torch.no_grad():
             for i, (batch_x, batch_y) in enumerate(vali_loader):
@@ -57,21 +62,40 @@ class Exp_Tabular(Exp_Basic):
 
                 pred = outputs.detach().cpu()
                 true = batch_y.detach().cpu()
-                if not self.args.simplify_targets: 
-                    loss = criterion(pred[:, cal_grad_index], true[:, cal_grad_index])
-                else:
-                    loss = criterion(pred, true)
 
-                total_loss.append(loss)
-        total_loss = np.average(total_loss)
+                if r2:
+                    pred = vali_data.multiply_weight(vali_data.inverse_transform(pred.numpy()))
+                    true = vali_data.multiply_weight(vali_data.inverse_transform(true.numpy()))
+                    preds.append(pred)
+                    trues.append(true)
+                else:
+                    loss = criterion(pred[:, cal_grad_targets], true[:, cal_grad_targets])
+
+                    total_loss.append(loss)
+
+        if r2:
+            preds = np.concatenate(preds, axis=0)
+            trues = np.concatenate(trues, axis=0)
+            metric = r2_score(trues[:, cal_grad_targets], preds[:, cal_grad_targets], multioutput="raw_values")
+            metric = np.concatenate([metric, np.ones(preds.shape[1] - len(cal_grad_targets))]).mean() * -1
+        else:
+            total_loss = np.average(total_loss)
         self.model.train()
+        if r2:
+            return metric
         return total_loss
+    
+    def finetune(self, setting):
+        print('loading model')
+        self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
+        return self.train(setting)
 
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
         vali_data, vali_loader = self._get_data(flag='val')
-        if not self.args.simplify_targets:            
-            cal_grad_index = np.nonzero(vali_data.weight[0] != 0)[0].tolist()
+        cal_grad_targets = np.nonzero(vali_data.weight[0] != 0)[0].tolist()
+        no_grad_targets = vali_data.get_no_grad_targets()
+        cal_grad_targets = [x for x in cal_grad_targets if x not in no_grad_targets]
 
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
@@ -85,6 +109,11 @@ class Exp_Tabular(Exp_Basic):
         model_optim = self._select_optimizer()
         criterion = self._select_criterion()
 
+        if self.args.is_training == -2:
+            vali_loss = self.vali(vali_data, vali_loader, criterion)
+            print('r2:{}'.format(vali_loss * -1))
+            early_stopping(vali_loss, self.model, path)
+        
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             train_loss = []
@@ -99,10 +128,7 @@ class Exp_Tabular(Exp_Basic):
 
                 outputs = self.model(batch_x)
 
-                if not self.args.simplify_targets:
-                    loss = criterion(outputs[:, cal_grad_index], batch_y[:, cal_grad_index])
-                else:
-                    loss = criterion(outputs, batch_y)
+                loss = criterion(outputs[:, cal_grad_targets], batch_y[:, cal_grad_targets])
                 train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
@@ -136,6 +162,7 @@ class Exp_Tabular(Exp_Basic):
 
     def test(self, setting, test=0):
         test_data, test_loader = self._get_data(flag='test')
+        no_grad_targets = test_data.get_no_grad_targets()
         if test:
             print('loading model')
             self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
@@ -148,7 +175,7 @@ class Exp_Tabular(Exp_Basic):
             for i, (batch_x, batch_y) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
-
+                
                 outputs = self.model(batch_x)
 
                 outputs = outputs.detach().cpu().numpy()
@@ -171,97 +198,74 @@ class Exp_Tabular(Exp_Basic):
         folder_path = './results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-            
 
         # mae, mse, rmse, mape, mspe = metric(preds, trues)
         r2 = r2_score(trues, preds, multioutput="raw_values")
-        if self.args.simplify_targets:
-            r2 = np.concatenate([r2, np.ones(63)])
+        r2[no_grad_targets] = 1.0
         print('r2:{}'.format(r2.mean()))
-        f = open("result_tabular.txt", 'a')
+        print('adjust r2:{}'.format(np.where(r2 < 0, 0, r2).mean()))
+        f = open("result_seq2seq.txt", 'a')
         f.write(setting + "  \n")
-        f.write('r2:{}'.format(r2.mean()))
+        f.write('r2:{}'.format(np.where(r2 < 0, 0, r2).mean()))
         f.write('\n')
         f.write('\n')
         f.close()
 
         np.save(folder_path + 'metrics.npy', r2)
         if self.args.save_results:
-            preds = pl.DataFrame(preds, schema=test_data.targets, orient="row")
-            trues = pl.DataFrame(trues, schema=test_data.targets, orient="row")
-            preds.write_parquet(folder_path + 'pred.parquet')
-            trues.write_parquet(folder_path + 'true.parquet')
-
+            np.save(folder_path + 'pred.npy', preds)
+            np.save(folder_path + 'true.npy', trues)
+        
         return
-    
+
     def submit(self, setting, test=0):
-        df_test = pl.read_parquet(self.args.test_path)
+        import polars as pl
+        from sklearn.preprocessing import StandardScaler
+        from joblib import load
+        df_test = pl.read_parquet("/data/home/scv7343/run/climsim_new/dataset/ClimSim/test.parquet")
         if test:
             print('loading model')
             self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
 
-        feature_scaler: StandardScaler = load(self.args.feature_scaler_path)
-        target_scaler: StandardScaler = load(self.args.target_scaler_path)
+        feature_scaler: StandardScaler = load("/data/home/scv7343/run/climsim_new/dataset/ClimSim/feature_scaler.joblib")
+        target_scaler: StandardScaler = load("/data/home/scv7343/run/climsim_new/dataset/ClimSim/target_scaler.joblib")
         feature_name = feature_scaler.feature_names_in_.tolist()
         target_name = target_scaler.feature_names_in_.tolist()
 
-        df_weight = pl.read_parquet(self.args.weight_path)
+        df_weight = pl.read_parquet("/data/home/scv7343/run/climsim_new/dataset/ClimSim/sample_submission.parquet")
         weight = df_weight[target_name].to_numpy()
 
         if self.args.postprocess:
             r2 = np.load('./results/' + setting + '/' + 'metrics.npy')
-            unpredict_targets_index = np.nonzero(r2 < 0)[0]
-            if self.args.simplify_targets:
-                simple_target_index = np.nonzero(weight[0] != 0)[0].tolist()
-                simple_target = [target_name[x] for x in simple_target_index]
-                print([simple_target[x] for x in unpredict_targets_index])
-            else:
-                print([target_name[x] for x in unpredict_targets_index])
-
-        if self.args.simplify_features:
-            fi = pd.read_csv(self.args.feature_importance_path)
-            simple_feature_name = fi[fi["feature_importance"] <= self.args.fi_threshold]["feature_name"].to_list()
-            simple_feature_index = [feature_name.index(x) for x in simple_feature_name]
-
-        if self.args.simplify_targets:
-            simple_target_index = np.nonzero(weight[0] != 0)[0].tolist()
+            print('r2:{}'.format(r2.mean()))
+            print('adjust r2:{}'.format(np.where(r2 < 0, 0, r2).mean()))
+            unpredict_target_index = np.nonzero(r2 < 0)[0]
+            print("unpredict target: ", [target_name[x] for x in unpredict_target_index])
 
         preds = []
         self.model.eval()
         with torch.no_grad():
             for chunk in df_test.iter_slices(self.args.batch_size):
                 data_x = chunk[feature_name].to_numpy()
-                data_x = feature_scaler.transform(data_x)
-                if self.args.simplify_features:
-                    data_x = data_x[:, simple_feature_index]
-                data_x = torch.tensor(data_x).float().to(self.device)
+                batch_x = torch.tensor(data_x).float().to(self.device)
 
-                pred = self.model(data_x)
+                outputs = self.model(batch_x)
                 
-                pred = pred.detach().cpu().numpy()
+                pred = outputs.detach().cpu().numpy()
+
                 if self.args.postprocess:
-                    pred[:, unpredict_targets_index] = 0
+                    pred[:, unpredict_target_index] = 0
+
                 if self.args.inverse:
-                    if self.args.simplify_targets:
-                        std = target_scaler.scale_[simple_target_index]
-                        mean = target_scaler.mean_[simple_target_index]
-                        pred = (pred * std + mean) * weight[:, simple_target_index]
-                        pred = pl.DataFrame(pred, schema=[target_name[x] for x in simple_target_index], orient="row")
-                    else:
-                        pred = target_scaler.inverse_transform(pred) * weight
-                        pred = pl.DataFrame(pred, schema=target_name, orient="row")
+                    pred = target_scaler.inverse_transform(pred.astype(np.float64)) * weight
+                    pred = pl.DataFrame(pred, schema=target_name, orient="row")
 
                 preds.append(pl.concat([chunk[["sample_id"]], pred], how="horizontal"))
 
         preds = pl.concat(preds, how="vertical")
-        if self.args.simplify_targets:
-            simple_target_index = np.nonzero(weight[0] == 0)[0].tolist()
-            simple_target = [target_name[x] for x in simple_target_index]
-            preds = pl.concat([preds, pl.DataFrame(np.zeros((len(preds), len(simple_target))), schema=simple_target, orient="row")], how="horizontal")
 
         folder_path = './output/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         preds[df_weight.columns].write_parquet(folder_path + "submission.parquet")
-        

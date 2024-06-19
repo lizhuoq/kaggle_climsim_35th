@@ -167,3 +167,5 @@ run_anylearn.py
 environment.txt
 output/
 temp.ipynb
+*.out
+*.pth

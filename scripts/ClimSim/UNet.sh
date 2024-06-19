@@ -8,7 +8,7 @@ model_name=UNet
 
 python -u run.py \
   --task_name 1d \
-  --is_training -1 \
+  --is_training -2 \
   --root_path ./dataset/ClimSim \
   --model_id 1d \
   --model $model_name \
@@ -17,12 +17,12 @@ python -u run.py \
   --out_channel 14 \
   --des 'Exp' \
   --itr 1 \
-  --train_epochs 10 \
+  --train_epochs 50 \
   --batch_size 16000 \
   --patience 3 \
   --learning_rate 0.001 \
-  --lradj fix \
+  --lradj cosine \
   --inverse \
   --use_multi_gpu \
   --devices 0,1 \
-  --postprocess
+  --postprocess 

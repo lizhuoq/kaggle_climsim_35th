@@ -8,7 +8,7 @@ model_name=Transformer
 
 python -u run.py \
   --task_name 1d \
-  --is_training 1 \
+  --is_training -2 \
   --root_path ./dataset/ClimSim \
   --model_id 1d \
   --model $model_name \
@@ -17,17 +17,17 @@ python -u run.py \
   --out_channel 14 \
   --dropout 0.2 \
   --n_layers 6 \
-  --d_model 64 \
-  --d_ff 256 \
-  --nhead 8 \
+  --d_model 768 \
+  --d_ff 3072 \
+  --nhead 12 \
   --des 'Exp' \
   --itr 1 \
-  --train_epochs 10 \
-  --batch_size 16000 \
+  --train_epochs 30 \
+  --batch_size 1600 \
   --patience 3 \
-  --learning_rate 0.001 \
-  --lradj fix \
+  --learning_rate 0.0001 \
+  --lradj cosine \
   --inverse \
   --use_multi_gpu \
   --devices 0,1 \
-  --sample_rate 0.31
+  --postprocess

@@ -49,16 +49,20 @@ class DoubleConvolution(nn.Module):
 
         # First $3 \times 3$ convolutional layer
         self.first = nn.Conv1d(in_channels, out_channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm1d(out_channels)
         self.act1 = nn.ReLU()
         # Second $3 \times 3$ convolutional layer
         self.second = nn.Conv1d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm1d(out_channels)
         self.act2 = nn.ReLU()
 
     def forward(self, x: torch.Tensor):
         # Apply the two convolution layers and activations
         x = self.first(x)
+        x = self.bn1(x)
         x = self.act1(x)
         x = self.second(x)
+        x = self.bn2(x)
         return self.act2(x)
 
 
@@ -110,7 +114,7 @@ class CropAndConcat(nn.Module):
         """
 
         # Crop the feature map from the contracting path to the size of the current feature map
-        contracting_x = torchvision.transforms.functional.center_crop(contracting_x.unsqueeze(3), [x.shape[2], 1]).squeeze(3)
+        # contracting_x = torchvision.transforms.functional.center_crop(contracting_x, [x.shape[2], x.shape[3]])
         # Concatenate the feature maps
         x = torch.cat([x, contracting_x], dim=1)
         #
@@ -127,47 +131,43 @@ class Model(nn.Module):
         :param out_channels: number of channels in the result feature map
         """
         super().__init__()
-
-        in_channels = configs.in_channel
-        out_channels = configs.out_channel
         self.pad = nn.ZeroPad1d(2)
 
         # Double convolution layers for the contracting path.
         # The number of features gets doubled at each step starting from $64$.
         self.down_conv = nn.ModuleList([DoubleConvolution(i, o) for i, o in
-                                        [(in_channels, 64), (64, 128), (128, 256), (256, 512)]])
+                                        [(configs.in_channel, 64), (64, 128), (128, 256), (256, 512), (512, 1024)]])
         # Down sampling layers for the contracting path
-        self.down_sample = nn.ModuleList([DownSample() for _ in range(4)])
+        self.down_sample = nn.ModuleList([DownSample() for _ in range(5)])
 
         # The two convolution layers at the lowest resolution (the bottom of the U).
-        self.middle_conv = DoubleConvolution(512, 1024)
+        self.middle_conv = DoubleConvolution(1024, 2048)
 
         # Up sampling layers for the expansive path.
         # The number of features is halved with up-sampling.
         self.up_sample = nn.ModuleList([UpSample(i, o) for i, o in
-                                        [(1024, 512), (512, 256), (256, 128), (128, 64)]])
+                                        [(2048, 1024), (1024, 512), (512, 256), (256, 128), (128, 64)]])
         # Double convolution layers for the expansive path.
         # Their input is the concatenation of the current feature map and the feature map from the
         # contracting path. Therefore, the number of input features is double the number of features
         # from up-sampling.
         self.up_conv = nn.ModuleList([DoubleConvolution(i, o) for i, o in
-                                      [(1024, 512), (512, 256), (256, 128), (128, 64)]])
+                                      [(2048, 1024), (1024, 512), (512, 256), (256, 128), (128, 64)]])
         # Crop and concatenate layers for the expansive path.
-        self.concat = nn.ModuleList([CropAndConcat() for _ in range(4)])
+        self.concat = nn.ModuleList([CropAndConcat() for _ in range(5)])
         # Final $1 \times 1$ convolution layer to produce the output
-        self.final_conv = nn.Conv1d(64, out_channels, kernel_size=1)
+        self.final_conv = nn.Conv1d(64, configs.out_channel, kernel_size=1)
 
     def forward(self, x: torch.Tensor):
         """
-        :param x: input image shape : batch_size, in_channel, 60
-        Input shape:
-            x: (batch_size, seq_len, in_channel)
-        Return shape:
-            (batch_size, seq_len, out_channel)
+        Input:
+            x: [batch_size, seq_len, in_channel]
+        Return:
+            [batch_size, seq_len, out_channel]
         """
+        # To collect the outputs of contracting path for later concatenation with the expansive path.
         x = x.transpose(1, 2)
         x = self.pad(x)
-        # To collect the outputs of contracting path for later concatenation with the expansive path.
         pass_through = []
         # Contracting path
         for i in range(len(self.down_conv)):
@@ -194,4 +194,4 @@ class Model(nn.Module):
         x = self.final_conv(x)
 
         #
-        return x[:, :, 2: 62].transpose(1, 2)
+        return x[:, :, 2:-2].transpose(1, 2)

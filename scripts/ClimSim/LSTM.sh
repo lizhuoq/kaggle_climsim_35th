@@ -8,7 +8,7 @@ model_name=LSTM
 
 python -u run.py \
   --task_name 1d \
-  --is_training 1 \
+  --is_training -2 \
   --root_path ./dataset/ClimSim \
   --model_id 1d \
   --model $model_name \
@@ -16,18 +16,19 @@ python -u run.py \
   --in_channel 25 \
   --out_channel 14 \
   --dropout 0.2 \
-  --n_layers 6 \
-  --d_model 512 \
+  --n_layers 4 \
+  --d_model 768 \
   --des 'Exp' \
   --itr 1 \
-  --train_epochs 50 \
+  --train_epochs 30 \
   --batch_size 1600 \
-  --patience 3 \
+  --patience 30 \
   --learning_rate 0.0001 \
   --lradj cosine \
   --inverse \
   --bidirectional \
   --use_multi_gpu \
   --devices 0,1 \
-  --sample_rate 0.31 \
-  --postprocess
+  --postprocess \
+  --add_cnn \
+  --finetune_vali_loss 0.7541952

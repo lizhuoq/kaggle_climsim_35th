@@ -7,7 +7,10 @@ import torch
 # from exp.exp_anomaly_detection import Exp_Anomaly_Detection
 from exp.exp_tabular import Exp_Tabular
 from exp.exp_1d import Exp_1D
-from exp.exp_small import Exp_Small
+from exp.exp_ed import Exp_ED
+from exp.exp_fe import Exp_FE
+from exp.exp_fe_v1 import Exp_FEV1
+from exp.exp_2d import Exp_2D
 # from exp.exp_classification import Exp_Classification
 from utils.print_args import print_args
 import random
@@ -39,13 +42,17 @@ if __name__ == '__main__':
     parser.add_argument('--freq', type=str, default='h',
                         help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
+    parser.add_argument('--test_train', action='store_true', default=False)
  
     parser.add_argument('--test_path', type=str)
     parser.add_argument('--feature_importance_path', type=str)
     parser.add_argument('--fi_threshold', type=int)
     parser.add_argument('--simplify_features', action='store_true', default=False)
     parser.add_argument('--simplify_targets', action='store_true', default=False)
+    parser.add_argument('--add_feature_engineering', action='store_true', default=False)
+    parser.add_argument('--add_fe_v1', action='store_true', default=False)
     parser.add_argument('--sample_rate', type=float, default=None)
+    parser.add_argument('--add_val_data', action='store_true', default=False)
 
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
@@ -98,6 +105,7 @@ if __name__ == '__main__':
     parser.add_argument('--in_channel', type=int)
     parser.add_argument('--out_channel', type=int)
     parser.add_argument('--n_layers', type=int)
+    parser.add_argument('--conv_out_channel', type=int)
 
     parser.add_argument('--levels', type=int, default=60)
     parser.add_argument('--vertical_out_channel', type=int, default=6)
@@ -106,6 +114,13 @@ if __name__ == '__main__':
     parser.add_argument('--scalar_out_channel', type=int, default=8)
     parser.add_argument('--nhead', type=int)
     parser.add_argument('--bidirectional', default=False, action="store_true")
+    parser.add_argument('--add_cnn', default=False, action="store_true")
+    parser.add_argument('--add_sa', default=False, action="store_true")
+    parser.add_argument('--custom_parameters', default=False, action="store_true")
+    parser.add_argument('--weight_decay', type=float, default=1e-6)
+
+    parser.add_argument('--huggingface_root', type=str, default="/data/home/scv7343/run/huggingface_dataset")
+    parser.add_argument('--huggingface_path', type=str, default=None)
     
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
@@ -118,6 +133,9 @@ if __name__ == '__main__':
     parser.add_argument('--loss', type=str, default='MSE', help='loss function')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
     parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
+
+    parser.add_argument('--optimizer', type=str, default="adam")
+    parser.add_argument('--finetune_vali_loss', type=float, default=None)
 
     # GPU
     parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
@@ -194,8 +212,14 @@ if __name__ == '__main__':
         Exp = Exp_Tabular
     elif args.task_name == "1d":
         Exp = Exp_1D
-    elif args.task_name == "small":
-        Exp = Exp_Small
+    elif args.task_name == 'ed':
+        Exp = Exp_ED
+    elif args.task_name == 'fe':
+        Exp = Exp_FE
+    elif args.task_name == 'fe_v1':
+        Exp = Exp_FEV1
+    elif args.task_name == "2d":
+        Exp = Exp_2D
     else:
         # Exp = Exp_Long_Term_Forecast
         pass
@@ -283,4 +307,33 @@ if __name__ == '__main__':
         exp = Exp(args)  # set experiments
         print('>>>>>>>submitting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
         exp.submit(setting, test=1)
+        torch.cuda.empty_cache()
+    elif args.is_training == -2:
+        ii = 0
+        setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
+            args.task_name,
+            args.model_id,
+            args.model,
+            args.data,
+            args.features,
+            args.seq_len,
+            args.label_len,
+            args.pred_len,
+            args.d_model,
+            args.n_heads,
+            args.e_layers,
+            args.d_layers,
+            args.d_ff,
+            args.expand,
+            args.d_conv,
+            args.factor,
+            args.embed,
+            args.distil,
+            args.des, ii)
+        exp = Exp(args)  # set experiments
+        print('>>>>>>>finetuning : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+        exp.finetune(setting)
+
+        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+        exp.test(setting)
         torch.cuda.empty_cache()
