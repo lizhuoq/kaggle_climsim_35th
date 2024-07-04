@@ -40,10 +40,10 @@ class ClimSimSeq2Seq(Dataset):
         if self.args.add_feature_engineering:
             self.features = self.features[:9 * 60] + fe_features[:6 * 60] + fe_features[6 * 60:] + self.features[9 * 60:]
             if self.args.add_fe_v1:
-                self.features = self.features[:15 * 60] + fe_v1_features[:11 * 60] + self.features[15 * 60:] + fe_v1_features[11 * 60:]
+                self.features = self.features[:15 * 60] + fe_v1_features[:5 * 60] + self.features[15 * 60:] + fe_v1_features[5 * 60:]
         else:
             if self.args.add_fe_v1:
-                self.features = self.features[:9 * 60] + fe_v1_features[:11 * 60] + self.features[9 * 60:] + fe_v1_features[11 * 60:]
+                self.features = self.features[:9 * 60] + fe_v1_features[:5 * 60] + self.features[9 * 60:] + fe_v1_features[5 * 60:]
         
     def __load_data__(self):
         nrows = None

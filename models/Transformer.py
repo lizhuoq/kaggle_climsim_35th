@@ -7,6 +7,7 @@ class Model(nn.Module):
         super().__init__()
         self.embedding = nn.Linear(configs.in_channel, configs.d_model)
         self.position_embedding = nn.Embedding(60, configs.d_model)
+        self.dropout = nn.Dropout(configs.dropout)
         self.encoder = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(
                 d_model=configs.d_model, 
@@ -27,7 +28,7 @@ class Model(nn.Module):
             [batch_size, seq_len, out_channel]
         """
         pos = self.position_embedding(torch.arange(x.shape[1]).to(x.device)).unsqueeze(0)
-        x = self.embedding(x) + pos
+        x = self.dropout(self.embedding(x) + pos)
         x = self.encoder(x)
         return self.projection(x)
       

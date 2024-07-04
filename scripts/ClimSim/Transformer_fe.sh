@@ -4,30 +4,31 @@ module load anaconda/2020.11
 module load cuda/11.8
 source activate climsim
 
-model_name=LSTM_attention
+model_name=Transformer
 
 python -u run.py \
   --task_name fe \
-  --is_training -2 \
+  --is_training 1 \
   --root_path ./dataset/ClimSim \
   --model_id fe \
   --model $model_name \
   --data ClimSim1D \
   --in_channel 33 \
   --out_channel 14 \
-  --dropout 0.2 \
-  --n_layers 3 \
-  --d_model 768 \
+  --dropout 0 \
+  --n_layers 12 \
+  --d_model 256 \
+  --d_ff 512 \
+  --nhead 8 \
   --des 'Exp' \
   --itr 1 \
-  --train_epochs 10 \
-  --batch_size 1600 \
+  --train_epochs 50 \
+  --batch_size 8000 \
   --patience 3 \
-  --learning_rate 1e-4 \
+  --learning_rate 5e-4 \
   --lradj cosine \
   --inverse \
-  --bidirectional \
   --use_multi_gpu \
   --devices 0,1,2 \
   --postprocess \
-  --add_feature_engineering
+  --add_feature_engineering 

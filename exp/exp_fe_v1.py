@@ -72,8 +72,8 @@ class Exp_FEV1(Exp_Basic):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
-                batch_x_0 = batch_x[:, :26 * 60].reshape(-1, 26, 60).transpose(1, 2) # B, L, C
-                batch_x_1 = batch_x[:, 26 * 60:].unsqueeze(1).repeat(1, 60, 1)
+                batch_x_0 = batch_x[:, :20 * 60].reshape(-1, 20, 60).transpose(1, 2) # B, L, C
+                batch_x_1 = batch_x[:, 20 * 60:].unsqueeze(1).repeat(1, 60, 1)
                 batch_x = torch.concat([batch_x_0, batch_x_1], dim=2)
                 
                 outputs = self.model(batch_x)
@@ -170,8 +170,8 @@ class Exp_FEV1(Exp_Basic):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
-                batch_x_0 = batch_x[:, :26 * 60].reshape(-1, 26, 60).transpose(1, 2) # B, L, C
-                batch_x_1 = batch_x[:, 26 * 60:].unsqueeze(1).repeat(1, 60, 1)
+                batch_x_0 = batch_x[:, :20 * 60].reshape(-1, 20, 60).transpose(1, 2) # B, L, C
+                batch_x_1 = batch_x[:, 20 * 60:].unsqueeze(1).repeat(1, 60, 1)
                 batch_x = torch.concat([batch_x_0, batch_x_1], dim=2)
                 
                 outputs = self.model(batch_x)
@@ -238,8 +238,8 @@ class Exp_FEV1(Exp_Basic):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
-                batch_x_0 = batch_x[:, :26 * 60].reshape(-1, 26, 60).transpose(1, 2) # B, L, C
-                batch_x_1 = batch_x[:, 26 * 60:].unsqueeze(1).repeat(1, 60, 1)
+                batch_x_0 = batch_x[:, :20 * 60].reshape(-1, 20, 60).transpose(1, 2) # B, L, C
+                batch_x_1 = batch_x[:, 20 * 60:].unsqueeze(1).repeat(1, 60, 1)
                 batch_x = torch.concat([batch_x_0, batch_x_1], dim=2)
                 
                 outputs = self.model(batch_x)
@@ -291,6 +291,7 @@ class Exp_FEV1(Exp_Basic):
         return
 
     def submit(self, setting, test=0):
+        # TODO: change
         import polars as pl
         from sklearn.preprocessing import StandardScaler
         from joblib import load

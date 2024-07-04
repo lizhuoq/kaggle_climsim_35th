@@ -31,6 +31,9 @@ if __name__ == '__main__':
     parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
     parser.add_argument('--model', type=str, required=True, default='Autoformer',
                         help='model name, options: [Autoformer, Transformer, TimesNet]')
+    parser.add_argument('--patch_size', type=int, default=10)
+    parser.add_argument('--stride', type=int, default=5)
+    parser.add_argument('--num_patch', type=int, default=11)
 
     # data loader
     parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')

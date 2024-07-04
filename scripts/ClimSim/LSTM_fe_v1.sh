@@ -13,7 +13,7 @@ python -u run.py \
   --model_id fe_v1 \
   --model $model_name \
   --data ClimSim1D \
-  --in_channel 49 \
+  --in_channel 39 \
   --out_channel 14 \
   --dropout 0.2 \
   --n_layers 4 \
@@ -28,7 +28,7 @@ python -u run.py \
   --inverse \
   --bidirectional \
   --use_multi_gpu \
-  --devices 0,1,2,3 \
+  --devices 0,1,2 \
   --postprocess \
   --add_feature_engineering \
   --add_fe_v1

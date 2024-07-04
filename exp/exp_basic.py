@@ -3,8 +3,8 @@ import torch
 # from models import Autoformer, Transformer, TimesNet, Nonstationary_Transformer, DLinear, FEDformer, \
 #     Informer, LightTS, Reformer, ETSformer, Pyraformer, PatchTST, MICN, Crossformer, FiLM, iTransformer, \
 #     Koopa, TiDE, FreTS, TimeMixer, TSMixer, SegRNN, MambaSimple, Mamba
-from models import MLP, Transformer, LSTM, Transformer_ed, UNet, LSTM_Encoder, ResNet, UNet_LSTM, CNN, \
-    CNN_LSTM, CNN_LSTM_attention, LSTM_new, LSTM_attention, LSTM_attention_CNN, LSTM_independent, UNet_2D
+from models import MLP, LSTM_residual, Transformer, LSTM, Transformer_ed, UNet, LSTM_Encoder, ResNet, UNet_LSTM, CNN, \
+    CNN_LSTM, CNN_LSTM_attention, LSTM_new, LSTM_attention, LSTM_attention_CNN, UNet_2D, Patch_LSTM
 
 
 class Exp_Basic(object):
@@ -51,8 +51,9 @@ class Exp_Basic(object):
             'LSTM_new': LSTM_new, 
             'LSTM_attention': LSTM_attention, 
             'LSTM_attention_CNN': LSTM_attention_CNN, 
-            'LSTM_independent': LSTM_independent, 
-            'UNet_2D': UNet_2D
+            'LSTM_residual': LSTM_residual,
+            'UNet_2D': UNet_2D, 
+            'Patch_LSTM': Patch_LSTM
         }
         self.device = self._acquire_device()
         self.model = self._build_model().to(self.device)
