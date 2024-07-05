@@ -357,3 +357,6 @@ r2:0.7507126076451109
 fe_fe_Transformer_ClimSim1D_ftM_sl96_ll48_pl96_dm192_nh8_el2_dl1_df384_expand2_dc4_fc1_ebtimeF_dtTrue_Exp_0  
 r2:0.7532016186419312
 
+fe_fe_Transformer_ClimSim1D_ftM_sl96_ll48_pl96_dm256_nh8_el2_dl1_df512_expand2_dc4_fc1_ebtimeF_dtTrue_Exp_0  
+r2:0.7181414357761061
+

@@ -21,6 +21,8 @@ def adjust_learning_rate(optimizer, epoch, args):
         }
     elif args.lradj == "cosine":
         lr_adjust = {epoch: args.learning_rate /2 * (1 + math.cos(epoch / args.train_epochs * math.pi))}
+    elif args.lradj == "warmup_cosine":
+        lr_adjust = {epoch: args.learning_rate /2 * (1 + math.cos(epoch / args.train_epochs * math.pi))}
     elif args.lradj == "fix":
         lr_adjust = {}
     if epoch in lr_adjust.keys():
@@ -30,6 +32,21 @@ def adjust_learning_rate(optimizer, epoch, args):
         print('Updating learning rate to {}'.format(lr))
 
 
+def adjust_lstm_dropout(model, epoch, start_epoch, p):
+    if epoch == start_epoch:
+        model.lstm.dropout = p
+        print(f'Updated Dropout Probability: {model.lstm.dropout}')
+    return
+
+
+def adjust_transformer_dropout(model, epoch, start_epoch, p):
+    if epoch == start_epoch:
+        model.transformerencoder1.dropout.p = p
+        model.transformerencoder2.dropout.p = p
+        print(f'Updated Dropout Probability: {model.transformerencoder2.dropout.p}')
+    return
+
+    
 class EarlyStopping:
     def __init__(self, patience=7, verbose=False, delta=0):
         self.patience = patience

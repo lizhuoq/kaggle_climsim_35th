@@ -31,7 +31,6 @@ class SELayer(nn.Module):
 class Model(nn.Module):
     def __init__(self, configs):
         super(Model, self).__init__()
-        self.se = SELayer(configs.in_channel, 4)
         self.lstm = nn.LSTM(
             input_size=configs.in_channel, 
             hidden_size=configs.d_model, 
@@ -40,10 +39,13 @@ class Model(nn.Module):
             dropout=configs.dropout, 
             bidirectional=configs.bidirectional
         )
-        # self.se = SELayer(configs.d_model * 2 if configs.bidirectional else configs.d_model, 16)
-        self.projection = nn.Linear(
-            configs.d_model * 2 if configs.bidirectional else configs.d_model, 
-            configs.out_channel
+        self.se = SELayer(configs.d_model * 2 if configs.bidirectional else configs.d_model, 16)
+        self.projection = nn.Sequential(
+            nn.Linear(configs.d_model * 2 if configs.bidirectional else configs.d_model, configs.d_model), 
+            nn.GELU(), 
+            nn.Linear(configs.d_model, configs.d_model // 2), 
+            nn.GELU(), 
+            nn.Linear(configs.d_model // 2, configs.out_channel)
         )
 
     def forward(self, x: torch.Tensor):
@@ -53,7 +55,7 @@ class Model(nn.Module):
         Return shape:
             (batch_size, seq_len, out_channel)
         """
-        x = self.se(x)
         x, _ = self.lstm(x)
+        x = self.se(x)
         x = self.projection(x)
         return x
