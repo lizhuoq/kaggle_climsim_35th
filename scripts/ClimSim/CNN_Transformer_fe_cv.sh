@@ -17,16 +17,17 @@ python -u run.py \
     --in_channel 33 \
     --out_channel 14 \
     --dropout 0 \
-    --d_model 192 \
-    --d_ff 768 \
+    --n_layers 4 \
+    --d_model 384 \
+    --d_ff 1536 \
     --nhead 8 \
     --drop_path 0.2 \
     --des 'Exp' \
     --itr 1 \
     --train_epochs 50 \
-    --batch_size 8000 \
+    --batch_size 1600 \
     --patience 3 \
-    --learning_rate 5e-4 \
+    --learning_rate 1e-4 \
     --lradj cosine \
     --inverse \
     --use_multi_gpu \

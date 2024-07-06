@@ -34,16 +34,21 @@ def adjust_learning_rate(optimizer, epoch, args):
 
 def adjust_lstm_dropout(model, epoch, start_epoch, p):
     if epoch == start_epoch:
-        model.lstm.dropout = p
-        print(f'Updated Dropout Probability: {model.lstm.dropout}')
+        model.module.lstm.dropout = p
+        print(f'Updated Dropout Probability: {model.module.lstm.dropout}')
     return
 
 
 def adjust_transformer_dropout(model, epoch, start_epoch, p):
     if epoch == start_epoch:
-        model.transformerencoder1.dropout.p = p
-        model.transformerencoder2.dropout.p = p
-        print(f'Updated Dropout Probability: {model.transformerencoder2.dropout.p}')
+        model.module.transformerencoder1.dropout.p = p
+        model.module.transformerencoder2.dropout.p = p
+        print(f'Updated Dropout Probability: {model.module.transformerencoder2.dropout.p}')
+        try:
+            model.module.transformerencoder3.dropout.p = p
+            model.module.transformerencoder4.dropout.p = p
+        except:
+            print("model don't have transformerencoder3 and 4")
     return
 
     

@@ -94,20 +94,33 @@ class Model(nn.Module):
     def __init__(self, configs) -> None:
         super().__init__()
         self.embedding = nn.Conv1d(configs.in_channel, configs.d_model, kernel_size=1)
-        n_layers = 2
-        num_conv_blocks = n_layers * 3
-        self.conv1 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (1 / num_conv_blocks), kernel_size=3, stride=1, padding=1)
-        self.conv2 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (2 / num_conv_blocks), kernel_size=3, stride=1, padding=1)
-        self.conv3 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (3 / num_conv_blocks), kernel_size=3, stride=1, padding=1)
+        self.n_layers = configs.n_layers
+        num_conv_blocks = self.n_layers * 3
+        self.conv1 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (0 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+        self.conv2 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (1 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+        self.conv3 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (2 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
         self.transformerencoder1 = nn.TransformerEncoderLayer(
             d_model=configs.d_model, nhead=configs.nhead, dim_feedforward=configs.d_ff, dropout=configs.dropout, activation=nn.functional.silu, batch_first=True
         )
-        self.conv4 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (4 / num_conv_blocks), kernel_size=3, stride=1, padding=1)
-        self.conv5 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (5 / num_conv_blocks), kernel_size=3, stride=1, padding=1)
-        self.conv6 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (6 / num_conv_blocks), kernel_size=3, stride=1, padding=1)
+        self.conv4 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (3 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+        self.conv5 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (4 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+        self.conv6 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (5 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
         self.transformerencoder2 = nn.TransformerEncoderLayer(
             d_model=configs.d_model, nhead=configs.nhead, dim_feedforward=configs.d_ff, dropout=configs.dropout, activation=nn.functional.silu, batch_first=True
         )
+        if self.n_layers == 4:
+            self.conv7 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (6 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+            self.conv8 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (7 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+            self.conv9 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (8 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+            self.transformerencoder3 = nn.TransformerEncoderLayer(
+                d_model=configs.d_model, nhead=configs.nhead, dim_feedforward=configs.d_ff, dropout=configs.dropout, activation=nn.functional.silu, batch_first=True
+            )
+            self.conv10 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (9 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+            self.conv11 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (10 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+            self.conv12 = ConvBlock(configs.d_model, configs.d_ff, configs.drop_path * (11 / num_conv_blocks - 1), kernel_size=3, stride=1, padding=1)
+            self.transformerencoder4 = nn.TransformerEncoderLayer(
+                d_model=configs.d_model, nhead=configs.nhead, dim_feedforward=configs.d_ff, dropout=configs.dropout, activation=nn.functional.silu, batch_first=True
+            )
 
         self.projection = nn.Sequential(
             nn.Linear(configs.d_model, configs.d_model // 2), 
@@ -134,5 +147,15 @@ class Model(nn.Module):
         x = self.conv5(x)
         x = self.conv6(x)
         x = self.transformerencoder2(x.transpose(1, 2))
+        if self.n_layers == 4:
+            x = x.transpose(1, 2)
+            x = self.conv7(x)
+            x = self.conv8(x)
+            x = self.conv9(x)
+            x = self.transformerencoder3(x.transpose(1, 2)).transpose(1, 2)
+            x = self.conv10(x)
+            x = self.conv11(x)
+            x = self.conv12(x)
+            x = self.transformerencoder4(x.transpose(1, 2))
         x = self.projection(x)
         return x
